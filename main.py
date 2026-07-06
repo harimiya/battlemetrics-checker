@@ -1,7 +1,6 @@
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import requests
-import re
 import time
 
 URL = "https://www.battlemetrics.com/servers/search?game=arksa&status=online&sort=details.time_i&q=NA-PVE-GenOne"
@@ -20,14 +19,12 @@ def send_discord(message):
 
 
 def main():
-    print("START PLAYWRIGHT")
+    print("START")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            args=[
-                "--disable-blink-features=AutomationControlled"
-            ]
+            args=["--disable-blink-features=AutomationControlled"]
         )
 
         page = browser.new_page(
@@ -38,33 +35,50 @@ def main():
             )
         )
 
-        # networkidleを使わない
         page.goto(URL, timeout=120000)
 
         print("PAGE OPENED")
 
-        # Cloudflare待機
         time.sleep(20)
 
         html = page.content()
 
         browser.close()
 
-    print("HTML LENGTH:", len(html))
+    print("HTML LOADED")
 
     soup = BeautifulSoup(html, "html.parser")
 
-    text = soup.get_text(" ", strip=True)
+    # テーブル行取得
+    rows = soup.find_all("tr")
 
-    matches = re.findall(r'(\d+)\s*Day', text, re.IGNORECASE)
+    print("ROWS:", len(rows))
 
-    print("MATCHES:", matches[:10])
+    first_day = None
 
-    if not matches:
+    for row in rows:
+        cols = row.find_all("td")
+
+        texts = [c.get_text(strip=True) for c in cols]
+
+        print(texts)
+
+        for text in texts:
+            # Day列を探す
+            if text.isdigit():
+                value = int(text)
+
+                # 0〜999程度をDay候補にする
+                if 0 <= value <= 999:
+                    first_day = value
+                    break
+
+        if first_day is not None:
+            break
+
+    if first_day is None:
         send_discord("Day列の取得失敗")
         return
-
-    first_day = int(matches[0])
 
     print("FIRST DAY:", first_day)
 
