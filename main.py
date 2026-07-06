@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
 import requests
 import time
+import re
 
 URL = "https://www.battlemetrics.com/servers/search?game=arksa&status=online&sort=details.time_i&q=NA-PVE-GenOne"
 
@@ -24,7 +24,9 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
+            args=[
+                "--disable-blink-features=AutomationControlled"
+            ]
         )
 
         page = browser.new_page(
@@ -39,41 +41,32 @@ def main():
 
         print("PAGE OPENED")
 
-        time.sleep(20)
+        # Cloudflare & JSロード待機
+        time.sleep(30)
 
-        html = page.content()
+        # 実際にブラウザに表示されている文字列取得
+        body_text = page.locator("body").inner_text()
 
         browser.close()
 
-    print("HTML LOADED")
+    print("TEXT LENGTH:", len(body_text))
 
-    soup = BeautifulSoup(html, "html.parser")
+    # ログ確認用
+    print(body_text[:3000])
 
-    # テーブル行取得
-    rows = soup.find_all("tr")
+    # Day列候補抽出
+    matches = re.findall(r'\b(\d+)\b', body_text)
 
-    print("ROWS:", len(rows))
+    print("MATCH COUNT:", len(matches))
 
     first_day = None
 
-    for row in rows:
-        cols = row.find_all("td")
+    for m in matches:
+        value = int(m)
 
-        texts = [c.get_text(strip=True) for c in cols]
-
-        print(texts)
-
-        for text in texts:
-            # Day列を探す
-            if text.isdigit():
-                value = int(text)
-
-                # 0〜999程度をDay候補にする
-                if 0 <= value <= 999:
-                    first_day = value
-                    break
-
-        if first_day is not None:
+        # Day値としてありそうな範囲
+        if 0 <= value <= 999:
+            first_day = value
             break
 
     if first_day is None:
