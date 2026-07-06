@@ -23,19 +23,34 @@ def main():
     print("START PLAYWRIGHT")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled"
+            ]
+        )
 
-        page = browser.new_page()
+        page = browser.new_page(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/126.0.0.0 Safari/537.36"
+            )
+        )
 
-        page.goto(URL, wait_until="networkidle", timeout=60000)
+        # networkidleを使わない
+        page.goto(URL, timeout=120000)
 
-        time.sleep(10)
+        print("PAGE OPENED")
+
+        # Cloudflare待機
+        time.sleep(20)
 
         html = page.content()
 
         browser.close()
 
-    print("PAGE LOADED")
+    print("HTML LENGTH:", len(html))
 
     soup = BeautifulSoup(html, "html.parser")
 
