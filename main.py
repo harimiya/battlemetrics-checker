@@ -1,7 +1,8 @@
-import cloudscraper
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-import re
 import requests
+import re
+import time
 
 URL = "https://www.battlemetrics.com/servers/search?game=arksa&status=online&sort=details.time_i&q=NA-PVE-GenOne"
 
@@ -19,25 +20,24 @@ def send_discord(message):
 
 
 def main():
-    print("START")
+    print("START PLAYWRIGHT")
 
-    scraper = cloudscraper.create_scraper(
-        browser={
-            'browser': 'chrome',
-            'platform': 'windows',
-            'mobile': False
-        }
-    )
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
 
-    response = scraper.get(URL)
+        page = browser.new_page()
 
-    print("STATUS:", response.status_code)
+        page.goto(URL, wait_until="networkidle", timeout=60000)
 
-    if response.status_code != 200:
-        send_discord(f"BattleMetrics access failed: {response.status_code}")
-        return
+        time.sleep(10)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+        html = page.content()
+
+        browser.close()
+
+    print("PAGE LOADED")
+
+    soup = BeautifulSoup(html, "html.parser")
 
     text = soup.get_text(" ", strip=True)
 
