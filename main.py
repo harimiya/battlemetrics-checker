@@ -1,19 +1,11 @@
-import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import re
+import requests
 
 URL = "https://www.battlemetrics.com/servers/search?game=arksa&status=online&sort=details.time_i&q=NA-PVE-GenOne"
 
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1523474721289670777/Rwxu8Fe6BTZX74Wl80GPMbxAoGAqsHAY6ZaHNHWknxvYMfKyS5Bcr_pNgyYw3g_qLWj1"
-
-headers = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/126.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-}
 
 
 def send_discord(message):
@@ -21,19 +13,23 @@ def send_discord(message):
         "content": message
     }
 
-    r = requests.post(DISCORD_WEBHOOK, json=payload)
+    response = requests.post(DISCORD_WEBHOOK, json=payload)
 
-    print("Discord:", r.status_code)
+    print("Discord:", response.status_code)
 
 
 def main():
-    print("ACCESS START")
+    print("START")
 
-    response = requests.get(
-        URL,
-        headers=headers,
-        timeout=30
+    scraper = cloudscraper.create_scraper(
+        browser={
+            'browser': 'chrome',
+            'platform': 'windows',
+            'mobile': False
+        }
     )
+
+    response = scraper.get(URL)
 
     print("STATUS:", response.status_code)
 
@@ -44,8 +40,6 @@ def main():
     soup = BeautifulSoup(response.text, "html.parser")
 
     text = soup.get_text(" ", strip=True)
-
-    print("PAGE LENGTH:", len(text))
 
     matches = re.findall(r'(\d+)\s*Day', text, re.IGNORECASE)
 
